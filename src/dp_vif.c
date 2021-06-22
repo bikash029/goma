@@ -167,7 +167,6 @@ noahs_raven(void)
   ddd_add_member(n, &TFMP_LIQ_VELO, 1, MPI_INT);
   ddd_add_member(n, &TFMP_INV_PECLET, 1, MPI_INT);
   ddd_add_member(n, &TFMP_KRG, 1, MPI_INT);
-
   ddd_set_commit(n);
  
 #endif
@@ -2731,7 +2730,8 @@ noahs_ark(void)
   ddd_add_member(n, &SARAMITO_YIELD, 1, MPI_INT);
   ddd_add_member(n, &STRESS_NORM, 1, MPI_INT);
   ddd_add_member(n, &SPECIES_SOURCES, 1, MPI_INT);
-  ddd_add_member(n, &len_u_post_proc, 1, MPI_INT);
+  ddd_add_member(n, &len_u_post_proc, 1, MPI_INT);	
+  ddd_add_member(n, &VISCOUS_STRESS, 1, MPI_INT);
 
   if ( nn_post_fluxes > 0 )
     {
