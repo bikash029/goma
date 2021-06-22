@@ -652,6 +652,7 @@ extern int POYNTING_VECTORS;	/* EM Poynting Vectors*/
 extern int SARAMITO_YIELD;
 extern int STRESS_NORM;
 extern int SPECIES_SOURCES;	/* Species sources */
+extern int VISCOUS_STRESS; 
 /*
  *  Post-processing Step 1: add a new variable flag to end of mm_post_proc.h
  *
