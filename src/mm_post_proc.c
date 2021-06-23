@@ -2514,7 +2514,7 @@ calc_standard_fields(double **post_proc_vect, /* rhs vector now called
     }
   }
 
-  if(VISCOUS_STRESS != -1)
+  /*if(VISCOUS_STRESS != -1)
     {
     for (a = 0; a < VIM; a++)
     {
@@ -2533,7 +2533,32 @@ calc_standard_fields(double **post_proc_vect, /* rhs vector now called
         local_lumped[VISCOUS_STRESS + a*VIM + b] = 1.;
       }
     }
- }
+ }*/
+ 
+ if (VISCOUS_STRESS != -1 && Num_Var_In_Type[pg->imtrx][R_MOMENTUM1])
+  {
+    VISCOUS_STRESS = index_post;
+    set_nv_tkud(rd, index, 0, 0, -2, "VS11","[1]",
+                "Viscous stress xx", FALSE);
+    index++;
+    index_post++;
+    set_nv_tkud(rd, index, 0, 0, -2, "VS12","[1]",
+                "Viscous stress xy", FALSE);
+
+    index++;
+    index_post++;
+
+    set_nv_tkud(rd, index, 0, 0, -2, "VS21","[1]",
+                "Viscous stress yx", FALSE);
+
+    index++;
+    index_post++;
+
+    set_nv_tkud(rd, index, 0, 0, -2, "VS22","[1]",
+                "Viscous stress yy", FALSE);
+    index++;
+    index_post++;
+    }
 
   /* calculate real-solid stress here !!  */
   if(REAL_STRESS_TENSOR != -1 && pd->e[pg->imtrx][R_SOLID1])
