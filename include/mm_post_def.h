@@ -10,19 +10,19 @@
 * This software is distributed under the GNU General Public License.      *
 \************************************************************************/
 
-/* mm_post_def.h -- definitions used in post processing calculations 
+/* mm_post_def.h -- definitions used in post processing calculations
  *
  * Notes: contents largely transferred into here from the old "mm_post_proc.h"
  *        so that file might be used exclusively for prototype declarations
  *        of functions defined in mm_post_proc.c
  */
 
-#ifndef _MM_POST_DEF_H
-#define _MM_POST_DEF_H
+#ifndef GOMA_MM_POST_DEF_H
+#define GOMA_MM_POST_DEF_H
 
 /*
  *  These Define parameters help us parse the force and flux calculation
- *  requests.   
+ *  requests.
  */
 
 #define FORCE_NORMAL	0
@@ -116,14 +116,16 @@
 #define I_KINETIC_ENERGY  38
 #define I_SHELL_VOLUME  39
 #define I_TFMP_FORCE    40
-#define I_VORTICITY     41
-#define I_GIESEKUS      42
-#define I_LAMB_MAG      43
-#define I_HELICITY      44
-#define I_Q_FCN         45
+#define I_MASS 41
+#define I_MASS_NEGATIVE_FILL  42
+#define I_MASS_POSITIVE_FILL  43
+#define I_VORTICITY     44
+#define I_GIESEKUS      45
+#define I_LAMB_MAG      46
+#define I_HELICITY      47
+#define I_Q_FCN         48
 
-
-#ifdef _MM_POST_PROC_C
+#ifdef GOMA_MM_POST_PROC_C
 struct Post_Processing_Flux_Names
 {
   char  *name;          /* flux string */
@@ -187,7 +189,7 @@ struct Post_Processing_Flux_Names pp_flux_names[49] =  {
         { "POYNTING_Z",       POYNTING_Z },
 };
 
-int Num_Flux_Names = sizeof(pp_flux_names) / 
+int Num_Flux_Names = sizeof(pp_flux_names) /
                 sizeof(struct Post_Processing_Flux_Names);
 
 struct Post_Processing_Volume_Names
@@ -201,7 +203,7 @@ typedef struct Post_Processing_Volume_Names VOL_NAME_STRUCT;
 extern VOL_NAME_STRUCT pp_vol_names[];
 extern int Num_Vol_Names;
 
-VOL_NAME_STRUCT pp_vol_names[] = 
+VOL_NAME_STRUCT pp_vol_names[] =
 {
   { "VOLUME",          I_VOLUME },
   { "LUB_LOAD",        I_LUB_LOAD},
@@ -242,12 +244,15 @@ VOL_NAME_STRUCT pp_vol_names[] =
   { "SPECIES_SOURCE",    I_SPECIES_SOURCE},
   { "KINETIC_ENERGY",    I_KINETIC_ENERGY},
   { "SHELL_VOLUME",      I_SHELL_VOLUME},
+  { "TFMP_FORCE",        I_TFMP_FORCE},
+  { "MASS",              I_MASS},
+  { "MASS_NEGATIVE_FILL",              I_MASS_NEGATIVE_FILL},
+  { "MASS_POSITIVE_FILL",              I_MASS_POSITIVE_FILL},
   { "VORTICITY",         I_VORTICITY},
   { "GIESEKUS",          I_GIESEKUS},
   { "LAMB_MAG",          I_LAMB_MAG},
   { "HELICITY",          I_HELICITY},
-  { "Q_FCN",             I_Q_FCN},
-  { "TFMP_FORCE",        I_TFMP_FORCE}
+  { "Q_FCN",             I_Q_FCN}
 };
 
 int Num_Vol_Names = sizeof( pp_vol_names )/ sizeof( VOL_NAME_STRUCT );
@@ -386,7 +391,7 @@ struct Post_Processing_Error
 			          [1] = elem size expansion rate
 			          [2] = minimum elem size
 			          [3] = maximum elem size
-			          [4] = target error value   
+			          [4] = target error value
 			          [5] = Volume over error target tolerance [%]    */
 };
 
@@ -400,6 +405,25 @@ struct Post_Processing_Global
 };
 
 typedef struct Post_Processing_Global pp_Global;
+
+typedef struct Post_Processing_Averages
+{
+  int type;
+  char type_name[MAX_VAR_NAME_LNGTH];
+  int species_index;
+  int index_post;
+  int index;
+  int non_variable_type;
+} pp_Average;
+
+enum AverageExtraTypes
+{
+  AVG_DENSITY,
+  AVG_HEAVISIDE,
+  AVG_VISCOSITY
+};
+
+
 /*
  * All of these variables are actually defined in mm_post_proc.c
  *
@@ -415,6 +439,7 @@ extern pp_Error         *pp_error_data;
 extern pp_Particles    **pp_particles;
 extern pp_Volume       **pp_volume;
 extern pp_Global       **pp_global;
+extern pp_Average      **pp_average;
 
 extern int nn_post_fluxes;
 extern int nn_post_fluxes_sens;
@@ -425,22 +450,23 @@ extern int nn_particles;
 extern int nn_volume;
 extern int ppvi_type;
 extern int nn_global;
+extern int nn_average;
 
 extern int Num_Nodal_Post_Proc_Var;
 extern int Num_Elem_Post_Proc_Var;
 
 #if 0				/* these are def'd in rf_bc_const.h */
 extern struct Equation_Names Exo_Var_Names[];
-extern int Num_Exo_Var_Names;  
+extern int Num_Exo_Var_Names;
 extern struct Equation_Names Var_Units[];
-extern int Num_Var_Units;  
+extern int Num_Var_Units;
 #endif
 
 /* the following variables are flags for input options - i.e. 0 or 1,
- * but they are set to the post-processing variable number in load_nodal_tkn 
+ * but they are set to the post-processing variable number in load_nodal_tkn
  * to be used in mm_post_proc.c  - for options which imply more than one post-
- * processing variable to be output, the flag becomes the post-processing 
- * variable number of the first one of this variable type 
+ * processing variable to be output, the flag becomes the post-processing
+ * variable number of the first one of this variable type
  *
  * Hey! All upper case should denote predefined constants from the
  * preprocessor, not *variables*! Just don't let it happen again!
@@ -459,14 +485,18 @@ extern int CONC_CONT;	        /* concentration at vertex & midside nodes*/
 extern int CONDUCTION_VECTORS;	/* conduction flux vectors*/
 
 extern int CURL_V;		/* Steve Kempka's favorite quantity */
-extern int DARCY_VELOCITY_GAS;	/* Darcy velocity vectors for gas phase 
+extern int DARCY_VELOCITY_GAS;	/* Darcy velocity vectors for gas phase
 				 * flow in a partially saturated porous
 				 * media */
 extern int DARCY_VELOCITY_LIQ;  /* Darcy velocity vectors for flow in a
 				 * saturated or unsaturated medium */
-extern int DENSITY;		/* density function at vertex and midside 
+extern int DENSITY;		/* density function at vertex and midside
 				 * nodes, e.g. for particle settling etc. */
-extern int HEAVISIDE;
+extern int POLYMER_VISCOSITY;
+extern int POLYMER_TIME_CONST;
+extern int MOBILITY_PARAMETER;
+extern int PTT_XI;
+extern int PTT_EPSILON;
 extern int DIELECTROPHORETIC_FIELD;
                                 /* Dielectrophoretic force vectors. */
 extern int DIELECTROPHORETIC_FIELD_NORM;
@@ -474,43 +504,43 @@ extern int DIELECTROPHORETIC_FIELD_NORM;
 extern int ENORMSQ_FIELD;	/* grad(|E|^2) */
 extern int ENORMSQ_FIELD_NORM;  /* |grad(|E|^2)| */
 extern int DIFFUSION_VECTORS;	/* diffusion flux vectors*/
-extern int DIFFUSION_VECTORS_POR_LIQ_GPHASE; 
+extern int DIFFUSION_VECTORS_POR_LIQ_GPHASE;
                                 /* Diffusion of the solvent liquid in the
 				 * gas phase for porous flow problems */
-extern int DIFFUSION_VECTORS_POR_AIR_GPHASE; 
+extern int DIFFUSION_VECTORS_POR_AIR_GPHASE;
                                 /* Diffusion of the air in the
 				 * gas phase for porous flow problems */
 extern int DIV_PVELOCITY;	/* check the divergence of the particle phase
 				 * velocities.  */
 extern int DIV_TOTAL;		/* Divergence of the sum of the fluid and
 				 * particle phases.  This should be zero. */
-extern int DIV_VELOCITY;	/* incompressibility constraint at vertex and 
+extern int DIV_VELOCITY;	/* incompressibility constraint at vertex and
 				 * midside nodes, e.g. del*v = 0 */
 extern int ELECTRIC_FIELD;      /* Electric field vectors: E = -grad(VOLTAGE) */
 extern int ELECTRIC_FIELD_MAG;  /* Electric field magnitude: sqrt(E.E) */
-extern int ENERGY_FLUXLINES;	/* energy flux function, analogous to 
+extern int ENERGY_FLUXLINES;	/* energy flux function, analogous to
 				 * stream function ... */
-extern int ERROR_ZZ_P;		/* Zienkiewicz-Zhu error indicator (element 
-				 * quantity) based solely on pressure 
+extern int ERROR_ZZ_P;		/* Zienkiewicz-Zhu error indicator (element
+				 * quantity) based solely on pressure
 				 * contributions */
-extern int ERROR_ZZ_P_ELSIZE;	/* Recommended new element size from ZZ 
+extern int ERROR_ZZ_P_ELSIZE;	/* Recommended new element size from ZZ
 				 * pressure measure                          */
-extern int ERROR_ZZ_Q;		/* Zienkiewicz-Zhu error indicator (element 
-				 * quantity) based solely on heat flux 
+extern int ERROR_ZZ_Q;		/* Zienkiewicz-Zhu error indicator (element
+				 * quantity) based solely on heat flux
 				 * contributions                             */
-extern int ERROR_ZZ_Q_ELSIZE;	/* Recommended new element size from ZZ heat 
+extern int ERROR_ZZ_Q_ELSIZE;	/* Recommended new element size from ZZ heat
 				 * flux measure */
-extern int ERROR_ZZ_VEL;	/* Zienkiewicz-Zhu error indicator (element 
-				 * quantity) based solely on velocity (shear 
+extern int ERROR_ZZ_VEL;	/* Zienkiewicz-Zhu error indicator (element
+				 * quantity) based solely on velocity (shear
 				 * stress) contributions                     */
-extern int ERROR_ZZ_VEL_ELSIZE;  /* Recommended new element size from ZZ 
+extern int ERROR_ZZ_VEL_ELSIZE;  /* Recommended new element size from ZZ
 				  * velocity measure */
 extern int EVP_DEF_GRAD_TENSOR;
 extern int EXTERNAL_POST;	/* external field variables read from other
 				 * files */
 extern int FILL_CONT;	        /* fill at vertex & midside nodes*/
-extern int FIRST_INVAR_STRAIN;   
-extern int FLUXLINES;		/* mass flux function. This is analogous to 
+extern int FIRST_INVAR_STRAIN;
+extern int FLUXLINES;		/* mass flux function. This is analogous to
 				 * stream function but represents mass flux */
 extern int LAGRANGE_CONVECTION;	/* Lagrangian convection velocity */
 extern int MEAN_SHEAR;
@@ -518,21 +548,21 @@ extern int MM_RESIDUALS;	/* stress equation residuals at vertex
 				 * and midside nodes*/
 extern int NS_RESIDUALS;	/* Navier-Stokes residuals at vertex
 				 * and midside nodes */
-extern int POROUS_RHO_GAS_SOLVENTS;	
+extern int POROUS_RHO_GAS_SOLVENTS;
                                 /* gas phase concentration of each solvent
 				 * species in a porous media */
 extern int POROUS_RHO_LPHASE;   /* liquid phase density per unit volume of
 				 * material in a porous medium */
 extern int POROUS_RHO_TOTAL_SOLVENTS;
-                                /* Total density of each solvent species in a 
+                                /* Total density of each solvent species in a
 				 * porous media. Total, here means the
 				 * density summed up over all phases */
-extern int POROUS_SATURATION;	/* saturation in a partially-saturated 
+extern int POROUS_SATURATION;	/* saturation in a partially-saturated
 				 * porous media */
 extern int POROUS_GRIDPECLET;   /* Grid Peclet number for porous media */
 extern int POROUS_SUPGVELOCITY; /* Effective velocities to use in SUPG
 				 * formulations in porous media */
-extern int POROUS_LIQUID_ACCUM_RATE; 
+extern int POROUS_LIQUID_ACCUM_RATE;
                                 /* The rate at which liquid in a partially
 				 * saturated porous medium is accumulating
 				 * at a point */
@@ -548,12 +578,12 @@ extern int STREAM_NORMAL_STRESS; /* streamwise normal stress function*/
 extern int STREAM_SHEAR_STRESS; /* streamwise shear stress function*/
 extern int STREAM_TENSION;      /* streamwise Stress Difference*/
 extern int STRESS_CONT;	        /* stress at vertex & midside nodes*/
-extern int STRESS_TENSOR;	/* stress tensor for mesh deformation 
+extern int STRESS_TENSOR;	/* stress tensor for mesh deformation
 				 * (Lagrangian pressure) */
 extern int SURFACE_VECTORS;	/* vector field of normals and tangents on
 				 * surfaces, curves and vertices */
 extern int SHELL_NORMALS;	/* vector field of smoothed normals computed from fv->sh_ang */
-extern int THIRD_INVAR_STRAIN;   
+extern int THIRD_INVAR_STRAIN;
 extern int TIME_DERIVATIVES;	/* time derivatives */
 extern int TOTAL_STRESS11;	/* sum over all modes for multi-mode models */
 extern int TOTAL_STRESS12;	/* sum over all modes for multi-mode models */
@@ -569,7 +599,7 @@ extern int PP_VolumeFractionGas;/* Value of the volume fraction of the gas compo
 
 extern int len_u_post_proc;	/* size of dynamically allocated u_post_proc
 				 * actually is */
-extern double *u_post_proc;	/* user-provided values used in calculating 
+extern double *u_post_proc;	/* user-provided values used in calculating
 				 * user defined post processing variable */
 extern int SAT_CURVE_TYPE;      /*Saturation hysteresis curve type */
 extern int CAP_PRESS_SWITCH;    /*Capillary pressure at hysteresis switch */
@@ -601,9 +631,12 @@ extern int EIG;               /* Eigenvalues of rate-of-strain tensor  */
 extern int EIG1;              /* Eigenvector of rate-of-strain tensor  */
 extern int EIG2;              /* Eigenvector of rate-of-strain tensor  */
 extern int EIG3;              /* Eigenvector of rate-of-strain tensor  */
+extern int HEAVISIDE;
+extern int RHO_DOT;
+extern int MOMENT_SOURCES;
+extern int YZBETA;
 extern int GRAD_Y;            /* Concentration gradient                  */
 extern int GRAD_SH;            /* Shear gradient                */
-
 extern int UNTRACKED_SPEC;		/*Untracked Species Concentration */
 
 extern int TFMP_GAS_VELO;
@@ -619,13 +652,16 @@ extern int POYNTING_VECTORS;	/* EM Poynting Vectors*/
 extern int SARAMITO_YIELD;
 extern int STRESS_NORM;
 extern int SPECIES_SOURCES;	/* Species sources */
+extern int VISCOUS_STRESS;  /* Viscous stress */
+extern int VISCOUS_STRESS_NORM;
+extern int VISCOUS_VON_MISES_STRESS;
 /*
  *  Post-processing Step 1: add a new variable flag to end of mm_post_proc.h
  *
  *       e.g.  int STREAM;
  *
- *       Note that this flag is now -1 (false) or the id number of the 
+ *       Note that this flag is now -1 (false) or the id number of the
  *       post-processing variable in load_nodal_tkn
  */
 
-#endif /* _MM_POST_DEF_H */
+#endif /* GOMA_MM_POST_DEF_H */
